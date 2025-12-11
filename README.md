@@ -7,8 +7,6 @@ Sistem, şirket kaynaklarının (toplantı odaları, çalışma masaları, cihaz
 
 ## Ölçülen Yetkinlikler
 
-[cite_start]Bu proje ile aşağıdaki teknik yetkinlikler değerlendirilmiştir[cite: 5]:
-
 -Node.js ve Express.js kullanımı [cite: 6]
 -RESTful API tasarımı [cite: 7]
 -Veritabanı modelleme becerisi [cite: 8]
