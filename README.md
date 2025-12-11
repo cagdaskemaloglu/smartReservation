@@ -30,32 +30,32 @@ Sistem, şirket kaynaklarının (toplantı odaları, çalışma masaları, cihaz
 
 Projenin yerel makinenizde çalıştırılması için aşağıdaki adımları sırasıyla takip edin.
 
-# 1. Ön Gereksinimler
+### 1. Ön Gereksinimler
 
 * Node.js (v18+) ve npm kurulu olmalıdır.
 * MongoDB veya PostgreSQL servisi yerel makinede veya bulutta erişilebilir olmalıdır.
 
-# 2. Depoyu Klonlama
+### 2. Depoyu Klonlama
 
 Terminalde: git clone [https://github.com/cagdaskemaloglu/bookingApp.git](https://github.com/cagdaskemaloglu/bookingApp.git)
 cd bookingApp
 
-# 3. Bağımlılıkları Yükleme
+### 3. Bağımlılıkları Yükleme
 
 npm install
 
-# 4. Çevre Değişkenlerini Ayarlama
+### 4. Çevre Değişkenlerini Ayarlama
 
 Projenin kök dizininde .env adında bir dosya oluşturun ve aşağıdaki gerekli değişkenleri kendi değerlerinizle doldurun:
 
-# Sunucu Portu
+#### Sunucu Portu
 PORT=3000
-# Veritabanı Bağlantısı
+#### Veritabanı Bağlantısı
 MONGO_URI = mongodb+srv://cagdaskml_db_user:z1tL3pkfgQvC5CyU@cluster0.r9nvaby.mongodb.net/
-# JWT Ayarları
+#### JWT Ayarları
 JWT_SECRET=cok_gizli_ve_uzun_bir_anahtar
 
-# 5. Uygulamayı Başlatma
+### 5. Uygulamayı Başlatma
 
 Terminalde: npm start
 
