@@ -1,25 +1,70 @@
 const Reservation = require('../model/reservationModel');
-const { reservationEventEmitter, EVENTS } = require('../utils/eventEmitter'); //
+const { reservationEventEmitter, EVENTS } = require('../utils/eventEmitter');
+const asyncHandler = require('express-async-handler'); // Hata yakalama için Express-Async-Handler kullanılması önerilir
+
+// YENİ: Geçmiş rezervasyonları temizleme fonksiyonu (cleanup)
+// @desc    Süresi dolmuş aktif rezervasyonları iptal (cancelled) eder.
+// @route   PUT /api/reservations/cleanup
+// @access  Private
+const cleanupExpiredReservations = asyncHandler(async (req, res) => {
+    const now = new Date();
+
+    // 2. Kriterlere uyan rezervasyonları toplu güncelleme (updateMany) ile iptal et
+    const updateResult = await Reservation.updateMany(
+        { 
+            status: 'active',           
+            endTime: { $lte: now }      
+        },
+        { 
+            $set: { status: 'expired' } // SADECE BU KISIM DEĞİŞTİRİLDİ: 'expired'
+        }
+    );
+
+    // 3. Kullanıcıya geri bildirim gönder
+    if (updateResult.modifiedCount > 0) {
+        // Konsola bilgi mesajı
+        console.log(`[CLEANUP] ${updateResult.modifiedCount} adet süresi dolmuş rezervasyon iptal edildi.`);
+        
+        // Frontend'e kaç adet kayıt güncellendiğini gönder
+        res.status(200).json({ 
+            message: `${updateResult.modifiedCount} adet geçmiş rezervasyon temizlendi.`,
+            count: updateResult.modifiedCount
+        });
+    } else {
+        res.status(200).json({ 
+            message: "İptal edilecek süresi dolmuş aktif rezervasyon bulunamadı.",
+            count: 0
+        });
+    }
+});
 
 
 // Yeni rezervasyon oluştur 
-const createReservation = async (req, res) => {
+// @route   POST /api/reservations
+// @access  Private
+const createReservation = asyncHandler(async (req, res) => {
     const { resourceId, startTime, endTime } = req.body;
-    const userId = req.user._id; // token dan gelen kullanıcı ID
+    const userId = req.user._id; 
 
     const start = new Date(startTime);
     const end = new Date(endTime);
 
-    //Girilen tarihler uyumlu mu
+    // Girilen tarihler uyumlu mu
     if (start >= end) {
         return res.status(400).json({ message: 'Başlangıç zamanı, bitiş zamanından önce olmalıdır.' });
     }
+    
+    // Geçmiş bir tarih için rezervasyon yapmayı engelle
+    if (start < new Date()) {
+        return res.status(400).json({ message: 'Geçmiş bir tarih ve saat için rezervasyon yapılamaz.' });
+    }
 
-    //çakışma kontrolü algoritması
+    // çakışma kontrolü algoritması
     const conflictingReservation = await Reservation.findOne({
-        resource: resourceId, //çakışma aranacak kaynak
-        status: 'active',      //aktif rezervasyonlarla karşılaştır
-        //Tarih-saat çakışma kontrolü
+        resource: resourceId, 
+        status: 'active',      
+        // Tarih-saat çakışma kontrolü: Yeni rezervasyonun bitişi, mevcut aktif rezervasyonun başlangıcından büyükse, 
+        // VE yeni rezervasyonun başlangıcı, mevcut aktif rezervasyonun bitişinden küçükse çakışma var demektir.
         $or: [
              { startTime: { $lt: end }, endTime: { $gt: start } },
         ]
@@ -32,14 +77,18 @@ const createReservation = async (req, res) => {
         });
     }
 
-    //rezervasyonu Oluştur
-    const reservation = await Reservation.create({
+    // Rezervasyonu Oluştur
+    let reservation = await Reservation.create({
         user: userId,
         resource: resourceId,
         startTime: start,
         endTime: end,
         status: 'active'
     });
+    
+    // Event fırlatmadan önce resource bilgilerini almak için popülasyon yap
+    reservation = await reservation.populate('resource', 'name');
+
 
     reservationEventEmitter.emit(EVENTS.RESERVATION_CREATED, {
         resourceName: reservation.resource.name,
@@ -50,11 +99,13 @@ const createReservation = async (req, res) => {
     });
 
     res.status(201).json(reservation);
-};
+});
 
 
-//tüm rezervasyonları listele (Admin) veya kullanıcının kendi rezervasyonlarını listele (User)
-const getReservations = async (req, res) => {
+// tüm rezervasyonları listele (Admin) veya kullanıcının kendi rezervasyonlarını listele (User)
+// @route   GET /api/reservations
+// @access  Private
+const getReservations = asyncHandler(async (req, res) => {
     // Admin ise tüm rezervasyonları listele
     if (req.user.role === 'admin') {
         const reservations = await Reservation.find({})
@@ -67,14 +118,16 @@ const getReservations = async (req, res) => {
             .populate('resource', 'name type');
         res.json(reservations);
     }
-};
+});
 
-//rezervasyon iptali (User veya Admin)
-const cancelReservation = async (req, res) => {
+// rezervasyon iptali (User veya Admin)
+// @route   PUT /api/reservations/:id
+// @access  Private
+const cancelReservation = asyncHandler(async (req, res) => {
     const reservation = await Reservation.findById(req.params.id);
 
     if (reservation) {
-        //admin veya rezervasyonu yapan kullanıcı iptal edebilir
+        // admin veya rezervasyonu yapan kullanıcı iptal edebilir
         if (reservation.user.toString() === req.user._id.toString() || req.user.role === 'admin') {
             
             if (reservation.status === 'cancelled') {
@@ -98,7 +151,12 @@ const cancelReservation = async (req, res) => {
     } else {
         res.status(404).json({ message: 'Rezervasyon bulunamadı' });
     }
+});
+
+
+module.exports = { 
+    createReservation, 
+    getReservations, 
+    cancelReservation, 
+    cleanupExpiredReservations // YENİ FONKSİYON
 };
-
-module.exports = { createReservation, getReservations, cancelReservation }; // Export edin
-

@@ -9,9 +9,9 @@
 </head>
 <body class="bg-dark text-white"> 
     
-    <header class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <header class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
         <div class="container-fluid">
-            <a class="navbar-brand" href="/">Reservation System</a>
+            <a class="navbar-brand" href="/">Smart Reservation Sistemi</a>
             
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
@@ -27,7 +27,7 @@
         </div>
     </header>
 
-    <main class="container">
+    <main class="container pt-4">
 
         <div id="admin-controls" class="d-flex mb-4 gap-2">
         </div>
@@ -105,6 +105,24 @@
 
             return fetch(url, defaultOptions);
         }
+        
+        // --- GEÇMİŞ REZERVASYON TEMİZLEME İŞLEMİ ---
+        async function runReservationCleanup() {
+            try {
+                //temizleme uç noktasına çağrı
+                const response = await authFetch(`${API_BASE_URL}/reservations/cleanup`, {
+                    method: 'PUT'
+                });
+                
+                if (response.ok) {
+                    console.log("Geçmiş rezervasyonlar başarıyla temizlendi.");
+                } else {
+                    console.warn("Rezervasyon temizleme sırasında bir sorun oluştu.");
+                }
+            } catch (error) {
+                console.error("Temizleme API'sine ulaşılamadı veya ağ hatası:", error);
+            }
+        }
 
         async function loadAdminControls() {
             if (!token) return;
@@ -129,7 +147,6 @@
             }
         }
 
-
         const authLink = document.getElementById('auth-link');
         const logoutButton = document.getElementById('logout-button');
 
@@ -146,7 +163,6 @@
             window.location.href = '/login';
         });
 
-
         async function fetchResources() {
             try {
                 const response = await authFetch(`${API_BASE_URL}/resources`);
@@ -154,7 +170,7 @@
 
                 const resources = await response.json();
 
-                resourcesListElement.innerHTML = ''; 
+                resourcesListElement.innerHTML = '';
 
                 resources.forEach(resource => {
                     const resourceCol = document.createElement('div');
@@ -162,7 +178,7 @@
 
                     const statusBadge = resource.status === 'available' 
                         ? '<span class="badge bg-success rounded-pill">Mevcut</span>' 
-                        : '<span class="badge bg-danger rounded-pill">Mevcut değil</span>';
+                        : '<span class="badge bg-danger rounded-pill">Bakımda</span>';
 
                     resourceCol.innerHTML = `
                         <div class="card h-100">
@@ -183,6 +199,8 @@
                 resourcesListElement.innerHTML = '<p class="alert alert-danger">Kaynaklar yüklenirken bir hata oluştu.</p>';
             }
         }
+
+        // --- REZERVASYON FORMU VE İŞLEMİ ---
 
         function showReservationForm(resourceId, resourceName) {
             reservationFormContainer.innerHTML = `
@@ -222,13 +240,13 @@
 
                 const data = await response.json();
 
-                if (response.ok) { 
+                if (response.ok) { // 201 Created veya 200 OK
                     messageEl.textContent = 'Rezervasyon başarıyla oluşturuldu!';
-                    messageEl.className = 'alert alert-success'; 
-                    fetchMyReservations();
-                } else { 
-                    messageEl.textContent = `Rezervasyon Başarısız: ${data.message || 'Unexpected Error'}`;
-                    messageEl.className = 'alert alert-danger';
+                    messageEl.className = 'alert alert-success'; // Bootstrap Alert
+                    fetchMyReservations(); // Listeyi güncelle
+                } else { // 400 Bad Request (Çakışma) veya başka bir hata
+                    messageEl.textContent = `Rezervasyon Başarısız: ${data.message || 'Bilinmeyen Hata'}`;
+                    messageEl.className = 'alert alert-danger'; // Bootstrap Alert
                 }
             } catch (error) {
                 messageEl.textContent = 'Sunucuya ulaşılamadı veya ağ hatası.';
@@ -237,10 +255,13 @@
         }
 
 
+        // --- KULLANICININ REZERVASYONLARINI LİSTELEME (EXPIRED Desteği Eklendi) ---
+
         async function fetchMyReservations() {
             myReservationsElement.innerHTML = '<p>Rezervasyonlar yükleniyor...</p>';
             
             try {
+                // Not: Admin ise tüm sistem rezervasyonlarını çekmeli
                 const response = await authFetch(`${API_BASE_URL}/reservations`);
                 if (!response) return;
 
@@ -252,15 +273,22 @@
 
 
                 if (reservations.length === 0) {
-                    myReservationsElement.innerHTML = '<p>Henüz aktif bir rezervasyon yok</p>';
+                    myReservationsElement.innerHTML = '<p>Henüz aktif bir rezervasyon bulunmamaktadır.</p>';
                     return;
                 }
 
-                let html = isAdmin ? '<h2>Tüm Sistem Rezervasyonları</h2>' : '<h2>Rezervasyonlarım</h2>';
+                let html = isAdmin ? '<h2>Tüm Sistem Rezervasyonları (Admin)</h2>' : '<h2>Rezervasyonlarım</h2>';
                 html += '<ul class="list-group">'; 
                 
                 reservations.forEach(res => {
-                    const statusType = res.status === 'active' ? 'bg-success' : 'bg-danger';
+                    let statusType;
+                    if (res.status === 'active') {
+                        statusType = 'bg-success'; // aktif yeşil
+                    } else if (res.status === 'expired') {
+                        statusType = 'bg-warning text-dark'; // süresi dolmuş sarı
+                    } else { // 'cancelled'
+                        statusType = 'bg-danger'; //iptal edilmiş kırmızı
+                    }
                     
                     const userInfo = isAdmin ? `
                         <p class="mb-1 text-secondary">
@@ -294,25 +322,24 @@
         }
         
         async function cancelReservation(reservationId) {
-            if (!confirm("Rezervasyonu iptal etmek istediğinizden emin misiniz?")) {
+            if (!confirm("Bu rezervasyonu iptal etmek istediğinizden emin misiniz?")) {
                 return;
             }
             try {
-                const response = await authFetch(`${API_BASE_URL}/reservations/${reservationId}`, {
-                    method: 'PUT',
-                    body: JSON.stringify({ status: 'cancelled' })
+                const response = await authFetch(`${API_BASE_URL}/reservations/${reservationId}/cancel`, {
+                    method: 'PUT', 
                 });
 
                 if (response.ok) {
-                    alert('Rezervasyon iptal edildi');
+                    alert('Rezervasyon başarıyla iptal edildi.');
                     fetchMyReservations();
                 } else {
                     const data = await response.json();
-                    alert(`İptal Başarısız: ${data.message || 'Unexpected error'}`);
+                    alert(`İptal Başarısız: ${data.message || 'Bilinmeyen Hata'}`);
                 }
             } catch (error) {
                 console.error("İptal sırasında ağ hatası:", error);
-                alert('İptal sırasında sunucuyla bağlantı kurulamadı.');
+                alert('İptal sırasında sunucuya ulaşılamadı.');
             }
         }
 
@@ -335,9 +362,9 @@
                 if (response.ok) { 
                     messageEl.textContent = `${data.name} başarıyla eklendi!`;
                     messageEl.className = 'alert alert-success'; 
-                    document.getElementById('add-resource-form').reset();
-                    fetchResources();
-                } else {
+                    document.getElementById('add-resource-form').reset(); 
+                    fetchResources(); 
+                } else { 
                     messageEl.textContent = `Ekleme Başarısız: ${data.message || 'Bilinmeyen Hata'}`;
                     messageEl.className = 'alert alert-danger'; 
                 }
@@ -348,6 +375,9 @@
         }
 
         if (token) {
+            // önce temizleme işlemini çalıştır (expired olarak günceller)
+            runReservationCleanup();
+            
             fetchResources();
             fetchMyReservations();
             loadAdminControls(); 
