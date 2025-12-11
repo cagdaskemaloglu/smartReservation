@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= pageTitle %></title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="bg-dark text-white"> 
+    
+    <header class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">Reservation System</a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+                <nav class="navbar-nav">
+                    <a class="nav-link" href="/">Ana Sayfa</a>
+                    <a class="nav-link" href="/login" id="auth-link">Giriş Yap / Kayıt Ol</a>
+                    <a class="nav-link" href="#" id="logout-button" style="display:none;">Çıkış Yap</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+
+        <div id="admin-controls" class="d-flex mb-4 gap-2">
+        </div>
+
+        <div id="add-resource-container" class="card p-4 mb-4" style="display:none;">
+            <h3>Yeni Kaynak Ekle</h3>
+            <form id="add-resource-form">
+                <div class="mb-3">
+                    <label for="resource-name" class="form-label">Adı:</label>
+                    <input type="text" id="resource-name" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label for="resource-type" class="form-label">Türü:</label>
+                    <select id="resource-type" class="form-select" required>
+                        <option value="room">Toplantı Odası</option>
+                        <option value="desk">Çalışma Masası</option>
+                        <option value="device">Cihaz</option>
+                        <option value="hall">Eğitim Salonu</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="resource-capacity" class="form-label">Kapasite:</label>
+                    <input type="number" id="resource-capacity" class="form-control" required min="1" value="1">
+                </div>
+                <div class="mb-3">
+                    <label for="resource-status" class="form-label">Durumu:</label>
+                    <select id="resource-status" class="form-select" required>
+                        <option value="available">Mevcut</option>
+                        <option value="maintenance">Bakımda</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">Kaynağı Ekle</button>
+                <button type="button" onclick="document.getElementById('add-resource-container').style.display='none'" class="btn btn-secondary">İptal</button>
+            </form>
+            <p id="resource-add-message" class="mt-3"></p>
+        </div>
+
+        <h2>Mevcut Kaynaklar ve Rezervasyon Yap</h2>
+        <div id="resources-list" class="row">
+            <p>Kaynaklar yükleniyor...</p>
+        </div>
+
+        <div id="reservation-form-container" class="mt-5">
+        </div>
+
+        <hr class="my-5">
+
+        <h2>Rezervasyonlarım</h2>
+        <div id="my-reservations">
+            </div>
+    </main>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:3000/api';
+        const resourcesListElement = document.getElementById('resources-list');
+        const reservationFormContainer = document.getElementById('reservation-form-container');
+        const myReservationsElement = document.getElementById('my-reservations');
+
+        const token = localStorage.getItem('userToken'); //token Kontrolü
+
+        async function authFetch(url, options = {}) {
+            if (!token) {
+                alert("Giriş yapmalısınız!");
+                window.location.href = '/login';
+                return;
+            }
+
+            const defaultOptions = {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                ...options
+            };
+
+            return fetch(url, defaultOptions);
+        }
+
+        async function loadAdminControls() {
+            if (!token) return;
+
+            try {
+                const profileResponse = await authFetch(`${API_BASE_URL}/auth/profile`);
+                const userProfile = await profileResponse.json();
+                const isAdmin = userProfile.role === 'admin';
+
+                if (isAdmin) {
+                    const adminControlsDiv = document.getElementById('admin-controls');
+                    adminControlsDiv.innerHTML = `
+                <button onclick="window.location.href='/reports'" class="btn btn-warning">
+                    📈 Yönetici Raporları
+                </button>
+                <button onclick="document.getElementById('add-resource-container').style.display='block'" class="btn btn-primary">
+                    ➕ Yeni Kaynak Ekle
+                </button>`;
+                }
+            } catch (error) {
+                console.error("Profil bilgisi çekilemedi.", error);
+            }
+        }
+
+
+        const authLink = document.getElementById('auth-link');
+        const logoutButton = document.getElementById('logout-button');
+
+        if (token) {
+            authLink.style.display = 'none';
+            logoutButton.style.display = 'inline';
+        } else {
+            reservationFormContainer.style.display = 'none'; // Giriş yapılmamışsa, rezervasyon formunu gizle
+        }
+
+        logoutButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            localStorage.removeItem('userToken');
+            window.location.href = '/login';
+        });
+
+
+        async function fetchResources() {
+            try {
+                const response = await authFetch(`${API_BASE_URL}/resources`);
+                if (!response) return;
+
+                const resources = await response.json();
+
+                resourcesListElement.innerHTML = ''; 
+
+                resources.forEach(resource => {
+                    const resourceCol = document.createElement('div');
+                    resourceCol.className = 'col-md-4 mb-4'; 
+
+                    const statusBadge = resource.status === 'available' 
+                        ? '<span class="badge bg-success rounded-pill">Mevcut</span>' 
+                        : '<span class="badge bg-danger rounded-pill">Mevcut değil</span>';
+
+                    resourceCol.innerHTML = `
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">${resource.name} (${resource.type})</h5>
+                                <p class="card-text">
+                                    Kapasite: <strong>${resource.capacity}</strong><br>
+                                    Durum: ${statusBadge}
+                                </p>
+                                <button onclick="showReservationForm('${resource._id}', '${resource.name}')" class="btn btn-sm btn-warning">Rezerve Et</button>
+                            </div>
+                        </div>
+                    `;
+                    resourcesListElement.appendChild(resourceCol);
+                });
+
+            } catch (error) {
+                resourcesListElement.innerHTML = '<p class="alert alert-danger">Kaynaklar yüklenirken bir hata oluştu.</p>';
+            }
+        }
+
+        function showReservationForm(resourceId, resourceName) {
+            reservationFormContainer.innerHTML = `
+                <div class="card p-4 mb-4">
+                    <h3>${resourceName} için Rezervasyon Yap</h3>
+                    <form id="reservation-form">
+                        <input type="hidden" id="resourceId" value="${resourceId}">
+                        <div class="mb-3">
+                            <label for="startTime" class="form-label">Başlangıç Zamanı:</label>
+                            <input type="datetime-local" id="startTime" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="endTime" class="form-label">Bitiş Zamanı:</label>
+                            <input type="datetime-local" id="endTime" class="form-control" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Rezervasyonu Onayla</button>
+                        <p id="reservation-message" class="mt-3"></p>
+                    </form>
+                </div>
+            `;
+            
+            document.getElementById('reservation-form').addEventListener('submit', handleReservationSubmit);
+        }
+
+        async function handleReservationSubmit(e) {
+            e.preventDefault();
+            const resourceId = document.getElementById('resourceId').value;
+            const startTime = new Date(document.getElementById('startTime').value).toISOString();
+            const endTime = new Date(document.getElementById('endTime').value).toISOString();
+            const messageEl = document.getElementById('reservation-message');
+
+            try {
+                const response = await authFetch(`${API_BASE_URL}/reservations`, {
+                    method: 'POST',
+                    body: JSON.stringify({ resourceId, startTime, endTime })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) { 
+                    messageEl.textContent = 'Rezervasyon başarıyla oluşturuldu!';
+                    messageEl.className = 'alert alert-success'; 
+                    fetchMyReservations();
+                } else { 
+                    messageEl.textContent = `Rezervasyon Başarısız: ${data.message || 'Unexpected Error'}`;
+                    messageEl.className = 'alert alert-danger';
+                }
+            } catch (error) {
+                messageEl.textContent = 'Sunucuya ulaşılamadı veya ağ hatası.';
+                messageEl.className = 'alert alert-danger';
+            }
+        }
+
+
+        async function fetchMyReservations() {
+            myReservationsElement.innerHTML = '<p>Rezervasyonlar yükleniyor...</p>';
+            
+            try {
+                const response = await authFetch(`${API_BASE_URL}/reservations`);
+                if (!response) return;
+
+                const reservations = await response.json();
+                
+                const profileResponse = await authFetch(`${API_BASE_URL}/auth/profile`);
+                const userProfile = await profileResponse.json();
+                const isAdmin = userProfile.role === 'admin';
+
+
+                if (reservations.length === 0) {
+                    myReservationsElement.innerHTML = '<p>Henüz aktif bir rezervasyon yok</p>';
+                    return;
+                }
+
+                let html = isAdmin ? '<h2>Tüm Sistem Rezervasyonları</h2>' : '<h2>Rezervasyonlarım</h2>';
+                html += '<ul class="list-group">'; 
+                
+                reservations.forEach(res => {
+                    const statusType = res.status === 'active' ? 'bg-success' : 'bg-danger';
+                    
+                    const userInfo = isAdmin ? `
+                        <p class="mb-1 text-secondary">
+                            Yapan: <strong>${res.user.name}</strong> (${res.user.email})
+                        </p>
+                    ` : '';
+
+                    html += `
+                        <li class="list-group-item d-flex justify-content-between align-items-center mb-2">
+                            <div>
+                                <h5 class="mb-1">${res.resource.name} (${res.resource.type})</h5>
+                                ${userInfo} 
+                                <small class="text-secondary">Başlangıç: ${new Date(res.startTime).toLocaleString()} - Bitiş: ${new Date(res.endTime).toLocaleString()}</small>
+                            </div>
+                            
+                            <div>
+                                <span class="badge ${statusType} rounded-pill me-3">${res.status.toUpperCase()}</span>
+                                
+                                ${res.status === 'active' ? 
+                                    `<button onclick="cancelReservation('${res._id}')" class="btn btn-sm btn-danger">İptal Et</button>` : ''}
+                            </div>
+                        </li>
+                    `;
+                });
+                html += '</ul>';
+                myReservationsElement.innerHTML = html;
+
+            } catch (error) {
+                myReservationsElement.innerHTML = '<p class="alert alert-danger">Rezervasyonlar yüklenirken hata oluştu.</p>';
+            }
+        }
+        
+        async function cancelReservation(reservationId) {
+            if (!confirm("Rezervasyonu iptal etmek istediğinizden emin misiniz?")) {
+                return;
+            }
+            try {
+                const response = await authFetch(`${API_BASE_URL}/reservations/${reservationId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ status: 'cancelled' })
+                });
+
+                if (response.ok) {
+                    alert('Rezervasyon iptal edildi');
+                    fetchMyReservations();
+                } else {
+                    const data = await response.json();
+                    alert(`İptal Başarısız: ${data.message || 'Unexpected error'}`);
+                }
+            } catch (error) {
+                console.error("İptal sırasında ağ hatası:", error);
+                alert('İptal sırasında sunucuyla bağlantı kurulamadı.');
+            }
+        }
+
+        async function handleAddResourceSubmit(e) {
+            e.preventDefault();
+            const name = document.getElementById('resource-name').value;
+            const type = document.getElementById('resource-type').value;
+            const capacity = parseInt(document.getElementById('resource-capacity').value);
+            const status = document.getElementById('resource-status').value;
+            const messageEl = document.getElementById('resource-add-message');
+
+            try {
+                const response = await authFetch(`${API_BASE_URL}/resources`, {
+                    method: 'POST',
+                    body: JSON.stringify({ name, type, capacity, status })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) { 
+                    messageEl.textContent = `${data.name} başarıyla eklendi!`;
+                    messageEl.className = 'alert alert-success'; 
+                    document.getElementById('add-resource-form').reset();
+                    fetchResources();
+                } else {
+                    messageEl.textContent = `Ekleme Başarısız: ${data.message || 'Bilinmeyen Hata'}`;
+                    messageEl.className = 'alert alert-danger'; 
+                }
+            } catch (error) {
+                messageEl.textContent = 'Sunucuya ulaşılamadı veya ağ hatası.';
+                messageEl.className = 'alert alert-danger';
+            }
+        }
+
+        if (token) {
+            fetchResources();
+            fetchMyReservations();
+            loadAdminControls(); 
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const addResourceForm = document.getElementById('add-resource-form');
+            if (addResourceForm) {
+                addResourceForm.addEventListener('submit', handleAddResourceSubmit);
+            }
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eE+c67J5zV5d0c0u2wF7wHk" crossorigin="anonymous"></script>
+</body>
+</html>

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= pageTitle %></title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="stylesheet" href="/css/style.css">
+    </head>
+<body class="bg-dark text-white d-flex justify-content-center align-items-center min-vh-100">
+    
+    <div class="login-wrapper card p-4 p-md-5 mx-3" style="max-width: 500px; width: 100%;">
+        <h1 class="text-center mb-4 text-primary">Kullanıcı Girişi</h1>
+        
+        <form id="login-form" class="mb-4">
+            <h2 class="mb-3">Giriş Yap</h2>
+            
+            <div class="mb-3">
+                <label for="login-email" class="form-label">E-posta:</label>
+                <input type="email" id="login-email" class="form-control" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="login-password" class="form-label">Parola:</label>
+                <input type="password" id="login-password" class="form-control" required>
+            </div>
+            
+            <button type="submit" class="btn btn-primary w-100 mt-2">Giriş Yap</button>
+        </form>
+
+        <hr>
+        
+        <form id="register-form" class="mt-4">
+            <h2 class="mb-3">Yeni Kullanıcı Kaydı</h2>
+            
+            <div class="mb-3">
+                <label for="register-name" class="form-label">Ad Soyad:</label>
+                <input type="text" id="register-name" class="form-control" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="register-email" class="form-label">E-posta:</label>
+                <input type="email" id="register-email" class="form-control" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="register-password" class="form-label">Parola:</label>
+                <input type="password" id="register-password" class="form-control" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="register-role" class="form-label">Rol:</label>
+                <select id="register-role" class="form-select">
+                    <option value="user">Kullanıcı</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-warning w-100 mt-2">Kayıt Ol</button>
+        </form>
+
+        <p id="message" class="mt-4"></p>
+        
+        <a href="/" class="btn btn-sm btn-secondary mt-3">Ana Sayfaya Dön</a>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:3000/api';
+        const messageElement = document.getElementById('message');
+
+        function displayMessage(text, isError = false) {
+            messageElement.textContent = text;
+            messageElement.className = isError ? 'alert alert-danger mt-4' : 'alert alert-success mt-4';
+        }
+
+        // save token and navigate homepage 
+        function handleAuthSuccess(token) {
+            localStorage.setItem('userToken', token);
+            displayMessage('Başarıyla giriş yapıldı. Yönlendiriliyorsun...', false);
+            setTimeout(() => {
+                window.location.href = '/'; // homepage
+            }, 1500);
+        }
+
+        document.getElementById('register-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            messageElement.textContent = ''; 
+
+            const name = document.getElementById('register-name').value;
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            const role = document.getElementById('register-role').value;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email, password, role })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) { 
+                    displayMessage(`Kayıt başarılı! Şimdi giriş yapabilirsiniz.`, false);
+                    document.getElementById('register-form').reset();
+                } else { 
+                    displayMessage(`Kayıt Başarısız: ${data.message || 'Bilinmeyen Hata'}`, true);
+                }
+            } catch (error) {
+                displayMessage('Sunucuya ulaşılamadı.', true);
+            }
+        });
+
+
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            messageElement.textContent = ''; 
+
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) { 
+                    displayMessage('Giriş yapıldı!', false);
+                    handleAuthSuccess(data.token);
+                } else { 
+                    displayMessage(`Giriş başarısız: ${data.message || 'E-posta veya parola yanlış! '}`, true);
+                }
+            } catch (error) {
+                displayMessage('Sunucuya ulaşılamadı.', true);
+            }
+        });
+        messageElement.textContent = '';
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eE+c67J5zV5d0c0u2wF7wHk" crossorigin="anonymous"></script>
+</body>
+</html>
