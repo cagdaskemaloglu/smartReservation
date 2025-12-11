@@ -33,7 +33,7 @@ Projenin yerel makinenizde çalıştırılması için aşağıdaki adımları s�
 ### 1. Ön Gereksinimler
 
 * Node.js (v18+) ve npm kurulu olmalıdır.
-* MongoDB veya PostgreSQL servisi yerel makinede veya bulutta erişilebilir olmalıdır.
+* MongoDB servisi yerel makinede veya bulutta erişilebilir olmalıdır.
 
 ### 2. Depoyu Klonlama
 
