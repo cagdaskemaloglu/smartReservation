@@ -7,9 +7,9 @@ Sistem, şirket kaynaklarının (toplantı odaları, çalışma masaları, cihaz
 
 ## Ölçülen Yetkinlikler
 
--Node.js ve Express.js kullanımı [cite: 6]
--RESTful API tasarımı [cite: 7]
--Veritabanı modelleme becerisi [cite: 8]
+-Node.js ve Express.js kullanımı
+-RESTful API tasarımı
+-Veritabanı modelleme becerisi
 -Zaman ve Çakışma Yönetimi Algoritması
 -Authentication & Authorization (JWT)
 -Clean code ve proje mimarisi
