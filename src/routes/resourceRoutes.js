@@ -11,7 +11,7 @@ router.route('/:id').delete(protect, admin, deleteResource);
 
 //Sadece Admin erişebilir
 router.route('/reports/top').get(protect, admin, getTopResourcesReport);
-router.route('/reports/activity').get(protect, admin, getDailyWeeklyReport); // YENİ
+router.route('/reports/activity').get(protect, admin, getDailyWeeklyReport);
 router.route('/reports/users').get(protect, admin, getTopUsersReport);
 
 module.exports = router;
