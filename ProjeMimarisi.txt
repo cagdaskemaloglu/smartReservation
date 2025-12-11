@@ -1,0 +1,42 @@
+Resource Reservation System
+Proje;  toplantı odaları, cihazlar, çalışma masaları gibi kaynakların etkili ve çakışmasız bir şekilde rezerve edilmesini sağlayan web tabanlı bir uygulamadır. Kaynak yönetimini dijitalleştirir, kullanıcı deneyimini optimize eder ve yöneticilere denetim araçları sunar.
+1. Teknik Mimari
+Proje Layered Architecture yaklaşımı ile sunucu ve istemci tarafını ayırır, API üzerinden iletişim kurar. Frontend ve backend arasındaki iletişim, JSON formatında Restful APi'ler aracılığıyla gerçekleştirilir.
+
+
+1.1. Frontend
+Kullanıcıların etkileşimde bulunduğu arayüz üç ana EJS şablonu üzerine kurulmuştur ve modern tasarım standartlarını kullanır. web sayfasındaki elemanları JavaScript kullanarak değiştirmeyi ifade 
+Teknoloji: EJS (DOM manipülasyonu, web sayfasındaki içeriği dinamik olarak değiştirmek ve etkileşimli web uygulamaları oluşturmak için kullanılır)
+Tasarım: Bootstrap 5,CSS
+İletişim: VanillaJs kullanılarak async fetch istekleri ile APi’ye bağlanır.
+1.2. Backend
+Bu katman, tüm sistem mantığını, yetkilendirmeyi ve veri manipülasyonunu içerir.
+Teknoloji: Node.js ve Express.js (RESTful API oluşturma).
+Auth : Kullanıcı Girişi, kaydı ve JWT ile yetki kontrolü. Yetki gereken API uç noktaları Token gerektirir.
+Logic : Rezervasyon çakışma kontrolü, kaynak durumu yönetimi ve kullanıcı rolü bazlı erişim kısıtlamaları (admin/kullanıcı).
+API Uç Noktaları: /auth, /resources, /reservations, /reports grupları altında hizmet verir.
+1.3.Database
+Sistem tarafından kullanılan tüm verilerin saklandığı alandır.
+Teknoloji: MongoDB
+İçerik: Kullanıcı bilgileri (rol dahil), Kaynak bilgileri (tip, kapasite, durum), Rezervasyon kayıtları (başlangıç/bitiş zamanı, kaynak, kullanıcı).
+
+
+2. Güvenlik ve Yetkilendirme Mimarisi
+JWT tabanlı kimlik doğrulama ile sağlanır.
+2.1. Authentication
+Kullanıcı başarıyla giriş yaptığında, sunucu tarafından imzalanmış bir JWT üretilir. Bu token, localStorage’da saklanır. Tüm sonraki yetkili API çağrıları, bu Token'ı HTTP başlığında Bearer <Token> gönderir.
+2.2. Authorization
+User (Kullanıcı): Kaynakları listeleyebilir, kendi adına rezervasyon yapabilir ve kendi rezervasyonlarını iptal edebilir.
+Admin (Yönetici): Kullanıcı yetkilerine ek olarak: Yeni kaynak ekleyebilir, sistemdeki tüm rezervasyonları görebilir ve yönetebilir. Özel Raporlama Paneline erişebilir.
+2.3. Güvenli Erişim Kontrolü
+Frontend'deki authFetch() fonksiyonu, herhangi bir API isteği yapmadan önce Token'ın varlığını kontrol eder ve Token'ı isteğe güvenli bir şekilde ekler. Backend ise, her yetkili uç noktada isteğin Token'ını doğrulayarak ve kullanıcının rolünü kontrol ederek hassas verilere erişimi kısıtlar.
+
+3. Ana İş Akışları
+3.1. Rezervasyon Akışı
+Kullanıcı: index.ejs'te bir kaynak seçer ve showReservationForm() tetikler. Kullanıcı başlangıç/bitiş tarihlerini girer ve handleReservationSubmit() ile formu gönderir.
+3.2. Raporlama Akışı (Admin)
+Admin: /reports sayfasına erişir ve fetchAndRenderReports() tetikler.
+Frontend: authFetch() kullanarak eş zamanlı olarak /reports/top, reports/activity gibi uç noktalara istek gönderir.
+Backend: Her rapor isteği için admin rolü kontrol edilir.
+Veritabanı: Gerekli istatistiksel sorgular çalıştırılır.
+Frontend: Gelen json verilerini alır ve Bootstrap grid ve card bileşenleri kullanarak okunabilir rapor kartları şeklinde sunar.

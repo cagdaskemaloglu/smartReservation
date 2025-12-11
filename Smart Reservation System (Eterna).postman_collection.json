@@ -1,0 +1,411 @@
+{
+	"info": {
+		"_postman_id": "7d619d00-63e7-4716-be0c-11f3685eb180",
+		"name": "Smart Reservation System (Eterna)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "50350067",
+		"_collection_link": "https://cagdaskml-4155792.postman.co/workspace/%25C3%2587a%25C4%259Fda%25C5%259F-Kemalo%25C4%259Flu's-Workspace~8ea640aa-7ed5-4b09-8fb0-1120dc895b8b/collection/50350067-7d619d00-63e7-4716-be0c-11f3685eb180?action=share&source=collection_link&creator=50350067"
+	},
+	"item": [
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "RegisterAdmin",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Admin5 Eterna\",\n    \"email\": \"admin5@eterna.tr\", \n    \"password\": \"cag1das2\",\n    \"role\": \"admin\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:3000/auth/register",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"auth",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "LoginAdmin",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status kodu 200 olmalı ve token dönmeli\", function () {",
+									"    pm.response.to.have.status(200);",
+									"    pm.expect(pm.response.json().token).to.be.a('string');",
+									"});",
+									"",
+									"var jsonData = pm.response.json();",
+									"",
+									"// Token'ı ortam değişkenine kaydetme",
+									"if (jsonData.token) {",
+									"    pm.environment.set(\"adminToken\", jsonData.token);",
+									"    console.log(\"Başarılı! Admin JWT kaydedildi: \" + jsonData.token.substring(0, 15) + \"...\");",
+									"}"
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"admin5@eterna.tr\", \n    \"password\": \"cag1das2\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:3000/api/auth/login",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Resource Management",
+			"item": [
+				{
+					"name": "Create Meeting Room (Save ID)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"",
+									"pm.test(\"Status kodu 201 olmalı\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"if (jsonData._id) {",
+									"    // Ortam değişkenine Resource ID'yi kaydetme",
+									"    pm.environment.set(\"resourceId\", jsonData._id);",
+									"    console.log(\"Yeni Kaynak ID kaydedildi: \" + jsonData._id);",
+									"}"
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5M2FjNjFkYTFiOTE3MDM2OTc2ODdkMCIsImlhdCI6MTc2NTQ1OTk2NSwiZXhwIjoxNzY1NTQ2MzY1fQ.7ZVBpRePPeRTOUl5iP7ul51ZbsBTgUXH0Z6ECbN5g_U",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Mars Toplantı Odası\", \n    \"type\": \"room\", \n    \"capacity\": 8, \n    \"status\": \"available\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:3000/api/resources",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"api",
+								"resources"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Resources",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5M2FjNjFkYTFiOTE3MDM2OTc2ODdkMCIsImlhdCI6MTc2NTQ1OTk2NSwiZXhwIjoxNzY1NTQ2MzY1fQ.7ZVBpRePPeRTOUl5iP7ul51ZbsBTgUXH0Z6ECbN5g_U",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:3000/api/resources",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"api",
+								"resources"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Reservation System (Conflict Tests)",
+			"item": [
+				{
+					"name": "Create Reservation - Success (14:00-15:00)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5M2FjNjFkYTFiOTE3MDM2OTc2ODdkMCIsImlhdCI6MTc2NTQ1OTk2NSwiZXhwIjoxNzY1NTQ2MzY1fQ.7ZVBpRePPeRTOUl5iP7ul51ZbsBTgUXH0Z6ECbN5g_U",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"resourceId\": \"{{resourceId}}\",\n    \"startTime\": \"2025-12-31T14:00:00Z\", \n    \"endTime\": \"2025-12-31T15:00:00Z\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:3000/api/reservations",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"api",
+								"reservations"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Reservation - CONFLICT (14:30-15:30)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:3000/api/reservations",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"api",
+								"reservations"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Reservation - No Conflict (16:00-17:00)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5M2FjNjFkYTFiOTE3MDM2OTc2ODdkMCIsImlhdCI6MTc2NTQ1OTk2NSwiZXhwIjoxNzY1NTQ2MzY1fQ.7ZVBpRePPeRTOUl5iP7ul51ZbsBTgUXH0Z6ECbN5g_U",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"resourceId\": \"{{resourceId}}\",\n    \"startTime\": \"2025-12-31T16:00:00Z\", \n    \"endTime\": \"2025-12-31T17:00:00Z\"  \n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:3000/api/reservations",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"api",
+								"reservations"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Reports",
+			"item": [
+				{
+					"name": "GET Top 5 Reserved Resources",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5M2FjNjFkYTFiOTE3MDM2OTc2ODdkMCIsImlhdCI6MTc2NTQ1OTk2NSwiZXhwIjoxNzY1NTQ2MzY1fQ.7ZVBpRePPeRTOUl5iP7ul51ZbsBTgUXH0Z6ECbN5g_U",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:3000/api/resources/reports/top",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"api",
+								"resources",
+								"reports",
+								"top"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Daily Reservation Count",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5M2FjNjFkYTFiOTE3MDM2OTc2ODdkMCIsImlhdCI6MTc2NTQ1OTk2NSwiZXhwIjoxNzY1NTQ2MzY1fQ.7ZVBpRePPeRTOUl5iP7ul51ZbsBTgUXH0Z6ECbN5g_U",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:3000/api/resources/reports/activity",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"api",
+								"resources",
+								"reports",
+								"activity"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Top 5 Active Users",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5M2FjNjFkYTFiOTE3MDM2OTc2ODdkMCIsImlhdCI6MTc2NTQ1OTk2NSwiZXhwIjoxNzY1NTQ2MzY1fQ.7ZVBpRePPeRTOUl5iP7ul51ZbsBTgUXH0Z6ECbN5g_U",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:3000/api/resources/reports/users",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"api",
+								"resources",
+								"reports",
+								"users"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
